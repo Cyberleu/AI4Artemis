@@ -68,7 +68,7 @@ class TreeNet:
     def __init__(self, tree_builder, value_network):
         self.value_network = value_network
         self.tree_builder = tree_builder
-        self.optimizer = optim.Adam(self.value_network.parameters(), lr = 3e-4, betas = (0.9, 0.999))
+        self.optimizer = optim.Adam(self.value_network.parameters(), lr = 3e-6, betas = (0.9, 0.999))
     def plan_to_value(self, plan_feature, sql_feature):
         def recursive(tree_feature):
             if isinstance(tree_feature[1],tuple):

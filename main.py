@@ -10,6 +10,7 @@ from sklearn.model_selection import train_test_split
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
+import json
 
 config = Config()
 pgrunner = PGConnector(config.database, config.username, config.password, config.pghost, config.pgport)   
@@ -18,17 +19,43 @@ labels = []
 plan_times = []
 sqlInform = {}
 tables = []
+
+def is_json_file_empty(file_path):
+    with open(file_path, 'r') as file:
+        try:
+            data = json.load(file)
+            if data:
+                return False
+            else:
+                return True
+        except json.JSONDecodeError:
+            return True
+
+
 with open(config.query_path, 'r') as f:
     for line in f:
         data_line = line.strip("\n")
         data.append(data_line)
 
-for sql in data:
+count = 1
+if is_json_file_empty(config.query_json_path):
+    for sql in data:
+        print("执行第{}条sql".format(count))
         plan_json = pgrunner.getPGPlan(sql)
         exe_time = pgrunner.getPGPlan(sql)['Plan']['Actual Total Time']
         plan_time = pgrunner.getPGPlan(sql)['Planning Time']
         sqlInform[sql] = (plan_json, exe_time, plan_time)
         labels.append(exe_time)
+        count = count + 1
+    with open(config.query_json_path, "w") as json_file:
+        json.dump(sqlInform, json_file)
+        print("成功写入json！")
+else:
+    with open(config.query_json_path, "r") as json_file:
+        sqlInform = json.load(json_file)
+        for sql in data:
+            labels.append(sqlInform[sql][1])
+
 
 train_x, test_x, train_y, test_y = train_test_split(data, labels, test_size=config.split_rate, random_state=42)       
 table2index, tables = pgrunner.getAllTables()

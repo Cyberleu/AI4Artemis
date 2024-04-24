@@ -10,6 +10,7 @@ class Config:
         self.device = "cpu"
         self.max_time_out = 120*1000
         self.query_path = "query.txt"
+        self.query_json_path = "query.json"
         self.max_table_num = 6
         self.max_column = 200
         self.split_rate = 0.2
