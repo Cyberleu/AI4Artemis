@@ -35,7 +35,7 @@ class Trainer:
         self.sqlInform = sqlInform
         self.table2index = table2index
 
-    def train(self,sql):
+    def train(self,sql, epoch):
 
         plan_json = self.sqlInform[sql][0]
         exe_time = self.sqlInform[sql][1]
@@ -44,7 +44,7 @@ class Trainer:
         sql_feature = self.model.value_network.sql_feature(sql_vec)
         plan_feature = self.model.tree_builder.plan_to_feature_tree(plan_json)
         target_value = self.value_extractor.encode(exe_time)
-        loss = self.model.train(plan_json = plan_json,sql_vec = sql_vec,target_value=target_value)
+        loss = self.model.train(plan_json = plan_json,sql_vec = sql_vec,target_value=target_value, epoch = epoch)
         return loss
     
     def validate(self, sql):
@@ -58,4 +58,15 @@ class Trainer:
         target_value = self.value_extractor.encode(exe_time)
         loss_value = F.mse_loss(value, target_value)
         return loss_value
+    def get_time(self, sql):
+        plan_json = self.sqlInform[sql][0]
+
+        sql_vec = self.sql2vec.to_vec(sql)
+        sql_feature = self.model.value_network.sql_feature(sql_vec)
+        plan_feature = self.model.tree_builder.plan_to_feature_tree(plan_json)
+        value = self.model.plan_to_value(plan_feature=plan_feature,sql_feature = sql_feature)
+        time = self.value_extractor.decode(value.item())
+        return time
+    def save(self):
+        torch.save(self.model.state_dict(), config.model_path)
 

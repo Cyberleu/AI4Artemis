@@ -11,6 +11,7 @@ import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 import json
+import torch
 
 config = Config()
 pgrunner = PGConnector(config.database, config.username, config.password, config.pghost, config.pgport)   
@@ -76,17 +77,50 @@ trainer = Trainer(net, sql2vec,value_extractor, sqlInform, table2index)
 count = 0
 x = []
 losses = []
-for epoch in range(100):
-    for query in train_x:
-         loss = trainer.train(query)
-    loss = 0
-    for query in test_x:
-         loss = loss + trainer.validate(query)
-    x.append(count)
-    count = count+1
-    losses.append(loss.item())
-    print("epoch:{}, loss:{}".format(epoch, loss))
+min_loss = 999
+# for epoch in range(100):
+#     for query in train_x:
+#          loss = trainer.train(query, epoch)
+#     loss = 0
+#     for query in test_x:
+#          loss = loss + trainer.validate(query)
+#     x.append(count)
+#     count = count+1
+#     losses.append(loss.item())
+#     if loss.item() < min_loss:
+#         trainer.save()
+#         min_loss = loss.item()
+#     print("epoch:{}, loss:{}".format(epoch, loss))
 
-plt.plot(x,losses)
+
+trainer.model.load_state_dict(torch.load(config.model_path))
+trainer.model.eval()
+tuples = []
+x_ = []
+times = []
+count = 0
+for query in train_x:
+    x_.append(count)
+    count = count + 1 
+    time = trainer.get_time(query)
+    times.append(sqlInform[query][1])
+    tuples.append((query, sqlInform[query][1], time))
+    print("real time:{} predicted time:{}".format(sqlInform[query][1], time))
+def by_real_time(t):
+    return t[1]
+sorted_tuples = sorted(tuples, key=by_real_time)
+y1 = []
+y2 = []
+for tuple in sorted_tuples:
+    y1.append(tuple[1])
+    y2.append(tuple[2])
+
+plt.scatter(x_, y1)
+plt.scatter(x_, y2)
+
+# plt.plot(x,losses)
 plt.savefig("img/1.png")
+plt.cla()
+plt.hist(times,bins=10)
+plt.savefig("img/2.png")
 plt.close()

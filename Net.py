@@ -4,7 +4,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 from config import Config
 import numpy as np
-
+from torch.optim.lr_scheduler import StepLR
 config = Config()
 class TreeLSTM(nn.Module):
     def __init__(self, input_size, hidden_size):
@@ -68,7 +68,8 @@ class TreeNet:
     def __init__(self, tree_builder, value_network):
         self.value_network = value_network
         self.tree_builder = tree_builder
-        self.optimizer = optim.Adam(self.value_network.parameters(), lr = 3e-6, betas = (0.9, 0.999))
+        self.optimizer = optim.Adam(self.value_network.parameters(), lr = 3e-5, betas = (0.9, 0.999))
+        self.scheduler = StepLR(self.optimizer, 30, gamma=0.1, last_epoch=-1)
     def plan_to_value(self, plan_feature, sql_feature):
         def recursive(tree_feature):
             if isinstance(tree_feature[1],tuple):
@@ -96,9 +97,17 @@ class TreeNet:
                     param.grad.data.clamp_(-2, 2)
         self.optimizer.step()
         return loss_value.item()
-    def train(self, plan_json, sql_vec, target_value):
+    def train(self, plan_json, sql_vec, target_value, epoch):
         plan_feature = self.tree_builder.plan_to_feature_tree(plan_json)
         sql_feature = self.value_network.sql_feature(sql_vec)
         value = self.plan_to_value(plan_feature=plan_feature,sql_feature = sql_feature)
         loss_value = self.loss(value, target_value)
+        self.scheduler.step(epoch = epoch)
         return loss_value
+    def state_dict(self):
+        return self.value_network.state_dict()
+    def load_state_dict(self, para):
+        self.value_network.load_state_dict(para)
+    def eval(self):
+        self.value_network.eval()
+
